@@ -1,3 +1,4 @@
+// contexts/AuthContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User as FirebaseUser, 
@@ -45,69 +46,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
-          setUserData(userDoc.data() as User);
+          const data = userDoc.data();
+          
+          // Ensure all required fields exist with defaults
+          const completeUserData: User = {
+            id: data.id || currentUser.uid,
+            email: data.email || currentUser.email || '',
+            displayName: data.displayName || currentUser.displayName || 'User',
+            avatar: data.avatar || 'male',
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            lastLoginAt: data.lastLoginAt?.toDate?.() || new Date(),
+            progress: data.progress || {},
+            streakData: data.streakData || {
+              currentStreak: 0,
+              longestStreak: 0,
+              lastActivityDate: new Date(),
+              activityDates: []
+            }
+          };
+          
+          setUserData(completeUserData);
+        } else {
+          // Create user document if it doesn't exist
+          await createUserDocument(currentUser);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        toast.error('Failed to load user data');
       }
     }
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as User);
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      } else {
-        setUserData(null);
-      }
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const login = async (email: string, password: string) => {
+  const createUserDocument = async (user: FirebaseUser) => {
     try {
-      await enableNetwork(db);
-      await signInWithEmailAndPassword(auth, email, password);
-      
-      // Update last login time
-      if (auth.currentUser) {
-        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-          lastLoginAt: serverTimestamp()
-        });
-      }
-      
-      toast.success('Welcome back!');
-    } catch (error: any) {
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  const signup = async (email: string, password: string, displayName: string) => {
-    try {
-      await enableNetwork(db);
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(user, { displayName });
-      
-      // Create initial user document with proper progress structure
       const newUser: User = {
         id: user.uid,
-        email,
-        displayName,
+        email: user.email || '',
+        displayName: user.displayName || 'User',
         avatar: 'male',
         createdAt: new Date(),
         lastLoginAt: new Date(),
-        progress: {}, // Empty progress object
+        progress: {},
         streakData: {
           currentStreak: 0,
           longestStreak: 0,
@@ -124,6 +103,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       setUserData(newUser);
+    } catch (error) {
+      console.error('Error creating user document:', error);
+      toast.error('Failed to create user profile');
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        await refreshUserData();
+      } else {
+        setUserData(null);
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      await enableNetwork(db);
+      await signInWithEmailAndPassword(auth, email, password);
+      
+      // Update last login time if user exists
+      if (auth.currentUser) {
+        try {
+          await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+            lastLoginAt: serverTimestamp()
+          });
+        } catch (error) {
+          // If user document doesn't exist, create it
+          await createUserDocument(auth.currentUser);
+        }
+      }
+      
+      toast.success('Welcome back!');
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
+  const signup = async (email: string, password: string, displayName: string) => {
+    try {
+      await enableNetwork(db);
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(user, { displayName });
+      
+      // Create initial user document
+      await createUserDocument(user);
+      
       toast.success('Account created successfully!');
     } catch (error: any) {
       toast.error(error.message);

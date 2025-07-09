@@ -1,4 +1,4 @@
-// components/Learning/LiveCodeEditor.tsx
+// components/Learning/LiveCodeEditor.tsx - FIXED VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -93,7 +93,7 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
             className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-5/6 flex flex-col"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white p-6 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white p-6 rounded-t-2xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold mb-2">{exercise.title}</h2>
@@ -123,10 +123,10 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden min-h-0">
               {/* Code Editor */}
-              <div className="w-1/2 border-r border-gray-200 flex flex-col">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div className="w-1/2 border-r border-gray-200 flex flex-col min-h-0">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                   <div className="flex items-center space-x-2">
                     <Code className="h-4 w-4 text-gray-600" />
                     <span className="font-medium text-gray-700">HTML Editor</span>
@@ -142,35 +142,38 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
                   </div>
                 </div>
                 
-                <div className="flex-1 relative">
-                  <textarea
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full h-full p-4 font-mono text-sm border-0 resize-none focus:outline-none bg-gray-900 text-green-400"
-                    style={{
-                      background: '#1a1a1a',
-                      color: '#00ff41',
-                      fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                      lineHeight: '1.5'
-                    }}
-                    placeholder="Write your HTML code here..."
-                    spellCheck={false}
-                  />
-                  
-                  {/* Line Numbers */}
-                  <div className="absolute left-0 top-0 bottom-0 w-12 bg-gray-800 border-r border-gray-700 flex flex-col text-gray-500 text-xs font-mono pt-4">
-                    {code.split('\n').map((_, index) => (
-                      <div key={index} className="h-6 flex items-center justify-center">
-                        {index + 1}
-                      </div>
-                    ))}
+                <div className="flex-1 relative min-h-0">
+                  <div className="absolute inset-0 flex">
+                    {/* Line Numbers */}
+                    <div className="w-12 bg-gray-800 border-r border-gray-700 flex flex-col text-gray-500 text-xs font-mono pt-4 flex-shrink-0">
+                      {code.split('\n').map((_, index) => (
+                        <div key={index} className="h-6 flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Code Editor */}
+                    <textarea
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      className="flex-1 p-4 font-mono text-sm border-0 resize-none focus:outline-none"
+                      style={{
+                        background: '#1a1a1a',
+                        color: '#00ff41',
+                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                        lineHeight: '1.5'
+                      }}
+                      placeholder="Write your HTML code here..."
+                      spellCheck={false}
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Preview Panel */}
-              <div className="w-1/2 flex flex-col">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div className="w-1/2 flex flex-col min-h-0">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                   <div className="flex items-center space-x-2">
                     <Eye className="h-4 w-4 text-gray-600" />
                     <span className="font-medium text-gray-700">Live Preview</span>
@@ -183,29 +186,31 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
                   </button>
                 </div>
                 
-                {isPreviewVisible ? (
-                  <div className="flex-1 bg-white border-2 border-dashed border-gray-200 m-4 rounded-lg overflow-hidden">
-                    <iframe
-                      ref={previewRef}
-                      className="w-full h-full border-0"
-                      title="Live Preview"
-                      sandbox="allow-same-origin"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-gray-500">
-                    <div className="text-center">
-                      <EyeOff className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                      <p>Preview hidden</p>
+                <div className="flex-1 p-4 min-h-0">
+                  {isPreviewVisible ? (
+                    <div className="h-full bg-white border-2 border-dashed border-gray-200 rounded-lg overflow-hidden">
+                      <iframe
+                        ref={previewRef}
+                        className="w-full h-full border-0"
+                        title="Live Preview"
+                        sandbox="allow-same-origin"
+                      />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                      <div className="text-center">
+                        <EyeOff className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p>Preview hidden</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Bottom Panel */}
-            <div className="bg-gray-50 p-4 rounded-b-2xl border-t border-gray-200">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 p-4 rounded-b-2xl border-t border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between mb-4">
                 {/* Help Section */}
                 <div className="flex items-center space-x-4">
                   <button
@@ -256,7 +261,7 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+                    className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-yellow-900">
@@ -285,7 +290,7 @@ const LiveCodeEditor: React.FC<LiveCodeEditorProps> = ({
               </AnimatePresence>
 
               {/* Expected Output */}
-              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
                   <Target className="h-4 w-4 mr-2" />
                   Expected Output
