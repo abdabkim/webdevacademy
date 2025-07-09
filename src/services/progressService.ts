@@ -1,28 +1,47 @@
-// services/progressService.ts
+// services/progressService.ts - FIXED VERSION
 import { 
-    doc, 
-    getDoc, 
-    setDoc, 
-    updateDoc, 
-    collection, 
-    query, 
-    where, 
-    orderBy, 
-    getDocs,
-    writeBatch,
-    serverTimestamp,
-    increment
-  } from 'firebase/firestore';
-  import { db } from '../firebase/config';
-  import { CourseProgress, StreakData } from '../types';
-  
-  // Start a new course
-  export const startCourse = async (
-    userId: string, 
-    courseId: string, 
-    courseName: string, 
-    totalLessons: number
-  ) => {
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  query, 
+  orderBy, 
+  getDocs,
+  writeBatch,
+  serverTimestamp,
+  increment
+} from 'firebase/firestore';
+import { db } from '../firebase/config';
+import toast from 'react-hot-toast';
+
+export interface CourseProgress {
+  courseId: string;
+  courseName: string;
+  level: number;
+  completedLessons: string[];
+  totalLessons: number;
+  lastAccessed: Date;
+  startedAt: Date;
+  isCompleted: boolean;
+  completedAt?: Date;
+}
+
+export interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: Date;
+  activityDates: Date[];
+}
+
+// Start a new course
+export const startCourse = async (
+  userId: string, 
+  courseId: string, 
+  courseName: string, 
+  totalLessons: number
+) => {
+  try {
     const userRef = doc(db, 'users', userId);
     
     const courseProgress: CourseProgress = {
@@ -44,16 +63,23 @@ import {
       }
     });
     
+    toast.success(`Started ${courseName} course! 🚀`);
     return courseProgress;
-  };
-  
-  // Complete a lesson
-  export const completeLesson = async (
-    userId: string, 
-    courseId: string, 
-    lessonId: string, 
-    timeSpent: number = 0
-  ) => {
+  } catch (error) {
+    console.error('Error starting course:', error);
+    toast.error('Failed to start course');
+    throw error;
+  }
+};
+
+// Complete a lesson and update progress
+export const completeLesson = async (
+  userId: string, 
+  courseId: string, 
+  lessonId: string, 
+  timeSpent: number = 0
+) => {
+  try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
     
@@ -111,23 +137,31 @@ import {
     // Update streak
     await updateUserStreak(userId);
     
+    toast.success(`Lesson completed! 🎉 Level ${newLevel}`);
+    
     return {
       ...currentProgress,
       completedLessons: newCompletedLessons,
       level: newLevel,
       isCompleted
     };
-  };
-  
-  // Calculate and update user streak
-  export const updateUserStreak = async (userId: string) => {
+  } catch (error) {
+    console.error('Error completing lesson:', error);
+    toast.error('Failed to save progress');
+    throw error;
+  }
+};
+
+// Calculate and update user streak
+export const updateUserStreak = async (userId: string) => {
+  try {
     const activityQuery = query(
       collection(db, 'users', userId, 'activity'),
       orderBy('date', 'desc')
     );
     
     const activityDocs = await getDocs(activityQuery);
-    const activityDates = activityDocs.docs.map(doc => doc.id).sort().reverse();
+    const activityDates = activityDocs.docs.map((docSnap: any) => docSnap.id).sort().reverse();
     
     let currentStreak = 0;
     const today = new Date().toISOString().split('T')[0];
@@ -192,14 +226,18 @@ import {
       'streakData.currentStreak': currentStreak,
       'streakData.longestStreak': longestStreak,
       'streakData.lastActivityDate': serverTimestamp(),
-      'streakData.activityDates': activityDates.map(date => new Date(date))
+      'streakData.activityDates': activityDates.map((dateString: string) => new Date(dateString))
     });
     
     return { currentStreak, longestStreak };
-  };
-  
-  // Get user dashboard stats
-  export const getUserDashboardStats = async (userId: string) => {
+  } catch (error) {
+    console.error('Error updating streak:', error);
+  }
+};
+
+// Get user dashboard stats
+export const getUserDashboardStats = async (userId: string) => {
+  try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
     
@@ -235,4 +273,14 @@ import {
       learningStreak,
       completedCourses
     };
-  };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return {
+      coursesStarted: 0,
+      lessonsCompleted: 0,
+      currentLevel: 0,
+      learningStreak: 0,
+      completedCourses: 0
+    };
+  }
+};

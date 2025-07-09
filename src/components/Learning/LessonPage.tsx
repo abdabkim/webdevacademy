@@ -1,4 +1,4 @@
-// components/Learning/LessonPage.tsx - FIXED VERSION
+// components/Learning/LessonPage.tsx - COMPLETE ENHANCED VERSION
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -14,10 +14,13 @@ import {
   Settings,
   Lightbulb,
   Target,
-  Zap
+  Zap,
+  Code
 } from 'lucide-react';
 import AITutor from './AITutor';
 import CodeVisualizer from './CodeVisualizer';
+import LiveCodeEditor from './LiveCodeEditor';
+import { useLessonProgress } from '../../hooks/useLessonProgress';
 
 interface SmartExplanation {
   term: string;
@@ -35,10 +38,20 @@ interface LessonSettings {
   autoProgress: boolean;
 }
 
+interface Exercise {
+  title: string;
+  description: string;
+  starterCode: string;
+  expectedOutput: string;
+  hints: string[];
+  solution: string;
+}
+
 const LessonPage: React.FC = () => {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
   const { userData } = useAuth();
   const navigate = useNavigate();
+  const { markLessonComplete, isCompleting } = useLessonProgress();
   
   // State management
   const [isCompleted, setIsCompleted] = useState(false);
@@ -48,6 +61,8 @@ const LessonPage: React.FC = () => {
   const [currentExplanation, setCurrentExplanation] = useState<SmartExplanation | null>(null);
   const [codeVisualizerActive, setCodeVisualizerActive] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showLiveEditor, setShowLiveEditor] = useState(false);
+  const [exerciseCompleted, setExerciseCompleted] = useState(false);
   const [settings, setSettings] = useState<LessonSettings>({
     theme: 'light',
     stepByStep: true,
@@ -82,7 +97,7 @@ const LessonPage: React.FC = () => {
     }
   };
 
-  // Enhanced lesson content with interactive features
+  // Enhanced lesson content with exercises
   const lessonContent = {
     'html-1': {
       title: 'Introduction to HTML',
@@ -120,11 +135,7 @@ const LessonPage: React.FC = () => {
     <h1>Hello, World!</h1>
     <p>This is my first HTML page.</p>
 </body>
-</html>`,
-          interactive: {
-            type: 'concept-map',
-            focus: 'html-basics'
-          }
+</html>`
         },
         {
           title: 'HTML Tags and Elements',
@@ -148,11 +159,7 @@ const LessonPage: React.FC = () => {
 <h2>This is a smaller heading</h2>
 <p>This is a paragraph of text.</p>
 <strong>This text is bold</strong>
-<em>This text is italic</em>`,
-          interactive: {
-            type: 'tag-builder',
-            focus: 'basic-tags'
-          }
+<em>This text is italic</em>`
         },
         {
           title: 'HTML Document Structure',
@@ -189,44 +196,58 @@ const LessonPage: React.FC = () => {
     <h1>Welcome to my website!</h1>
     <p>This is where all the visible content goes.</p>
 </body>
-</html>`,
-          interactive: {
-            type: 'structure-builder',
-            focus: 'document-structure'
-          }
+</html>`
         },
         {
-          title: 'Your First HTML Page',
+          title: 'Practice Time!',
           content: `
             <div class="smart-content">
-              <p>Now let's put it all together! You're going to create your very first HTML page. 🎯</p>
+              <p>Now it's time to practice what you've learned! 🎯</p>
               
               <div class="challenge-box">
-                <h4>🚀 Mini Challenge:</h4>
-                <p>Try to understand what each part of this code does. Click on any part you want explained!</p>
+                <h4>🚀 Hands-On Exercise:</h4>
+                <p>Create your first HTML page using the structure you just learned. Don't worry - I'll guide you through it!</p>
               </div>
               
-              <p>Don't worry if it seems like a lot - you'll get the hang of it quickly! Every web developer started exactly where you are now.</p>
+              <p>Click the "Start Coding" button below to open the live code editor. You'll be able to write HTML and see the result instantly!</p>
             </div>
           `,
-          codeExample: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>My Amazing Website</title>
-</head>
-<body>
-    <h1>Welcome to My Site!</h1>
-    <h2>About Me</h2>
-    <p>Hi! I'm learning HTML and this is my first webpage.</p>
-    <p>HTML is <strong>awesome</strong> and I'm excited to learn more!</p>
-</body>
-</html>`,
-          interactive: {
-            type: 'interactive-builder',
-            focus: 'complete-page'
-          }
+          hasExercise: true
         }
       ],
+      exercise: {
+        title: 'Create Your First HTML Page',
+        description: 'Build a simple webpage with a heading, paragraph, and learn about HTML structure.',
+        starterCode: `<!DOCTYPE html>
+<html>
+<head>
+    <title><!-- Add your page title here --></title>
+</head>
+<body>
+    <!-- Add a main heading here -->
+    
+    <!-- Add a paragraph about yourself here -->
+    
+</body>
+</html>`,
+        expectedOutput: '<h1>Welcome to My Website</h1><p>Hello! I\'m learning HTML and this is my first webpage.</p>',
+        hints: [
+          'Use <h1> tags to create a main heading',
+          'Use <p> tags to create a paragraph',
+          'Replace the comments (<!-- -->) with actual HTML elements',
+          'Make sure to close all your tags properly'
+        ],
+        solution: `<!DOCTYPE html>
+<html>
+<head>
+    <title>My First Website</title>
+</head>
+<body>
+    <h1>Welcome to My Website</h1>
+    <p>Hello! I'm learning HTML and this is my first webpage.</p>
+</body>
+</html>`
+      },
       quiz: {
         question: 'What are the three main parts of an HTML document?',
         options: [
@@ -245,7 +266,14 @@ const LessonPage: React.FC = () => {
   const lesson = lessonContent[lessonId as keyof typeof lessonContent];
   const userProgress = userData?.progress?.[courseId!];
 
-  // Handle clickable terms - FIXED
+  // Check if lesson is already completed
+  useEffect(() => {
+    if (userProgress?.completedLessons?.includes(lessonId!)) {
+      setIsCompleted(true);
+    }
+  }, [userProgress, lessonId]);
+
+  // Handle clickable terms
   const handleTermClick = (e: Event) => {
     const target = e.target as HTMLElement;
     const termKey = target.getAttribute('data-term');
@@ -255,21 +283,29 @@ const LessonPage: React.FC = () => {
     }
   };
 
-  // Handle lesson completion
+  // Handle lesson completion with Firebase
   const handleCompleteLesson = async () => {
     const timeSpent = Math.round((Date.now() - startTime) / 1000 / 60);
-    setIsCompleted(true);
     
-    // Here you would call your progress tracking service
-    // await markLessonComplete(courseId!, lessonId!, timeSpent);
+    const success = await markLessonComplete(courseId!, lessonId!, timeSpent);
     
-    setTimeout(() => {
-      if (lesson.nextLesson) {
-        navigate(`/learn/${courseId}/${lesson.nextLesson}`);
-      } else {
-        navigate(`/course/${courseId}`);
-      }
-    }, 2000);
+    if (success) {
+      setIsCompleted(true);
+      
+      setTimeout(() => {
+        if (lesson.nextLesson) {
+          navigate(`/learn/${courseId}/${lesson.nextLesson}`);
+        } else {
+          navigate(`/course/${courseId}`);
+        }
+      }, 2000);
+    }
+  };
+
+  // Handle exercise completion
+  const handleExerciseComplete = () => {
+    setExerciseCompleted(true);
+    setShowLiveEditor(false);
   };
 
   // Auto-advance in step-by-step mode
@@ -279,13 +315,13 @@ const LessonPage: React.FC = () => {
         if (currentStep < lesson.totalSteps - 1) {
           setCurrentStep(prev => prev + 1);
         }
-      }, 10000); // 10 seconds per step
+      }, 10000);
       
       return () => clearTimeout(timer);
     }
   }, [currentStep, settings.autoProgress, settings.stepByStep, lesson.totalSteps]);
 
-  // Add click listeners for interactive terms - FIXED
+  // Add click listeners for interactive terms
   useEffect(() => {
     const clickableTerms = document.querySelectorAll('.clickable-term');
     clickableTerms.forEach(term => {
@@ -338,6 +374,16 @@ const LessonPage: React.FC = () => {
         userProgress={userProgress}
         learningLevel={settings.explanationLevel}
       />
+
+      {/* Live Code Editor */}
+      {lesson.exercise && (
+        <LiveCodeEditor
+          isOpen={showLiveEditor}
+          onClose={() => setShowLiveEditor(false)}
+          exercise={lesson.exercise}
+          onComplete={handleExerciseComplete}
+        />
+      )}
 
       {/* Smart Explanation Modal */}
       <AnimatePresence>
@@ -502,6 +548,32 @@ const LessonPage: React.FC = () => {
                 className="lesson-content prose max-w-none"
                 dangerouslySetInnerHTML={{ __html: currentStepData.content }}
               />
+
+              {/* Exercise Button */}
+              {currentStepData.hasExercise && lesson.exercise && (
+                <div className="mt-8">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowLiveEditor(true)}
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-blue-600 transition-all flex items-center justify-center space-x-3"
+                  >
+                    <Code className="h-6 w-6" />
+                    <span>🚀 Start Coding Exercise</span>
+                  </motion.button>
+                  
+                  {exerciseCompleted && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2"
+                    >
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-green-800 font-medium">Exercise completed! Great job! 🎉</span>
+                    </motion.div>
+                  )}
+                </div>
+              )}
             </motion.div>
 
             {/* Code Visualizer */}
@@ -594,18 +666,33 @@ const LessonPage: React.FC = () => {
                     </div>
                   </div>
                 </button>
+
+                {currentStepData.hasExercise && lesson.exercise && (
+                  <button
+                    onClick={() => setShowLiveEditor(true)}
+                    className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <Code className="h-4 w-4 mr-3 text-green-600" />
+                      <div>
+                        <div className="font-medium text-green-900">Live Code Editor</div>
+                        <div className="text-xs text-green-600">Practice what you learned</div>
+                      </div>
+                    </div>
+                  </button>
+                )}
                 
                 <button
                   onClick={() => setCodeVisualizerActive(!codeVisualizerActive)}
-                  className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  className="w-full text-left p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                 >
                   <div className="flex items-center">
-                    <Eye className="h-4 w-4 mr-3 text-green-600" />
+                    <Eye className="h-4 w-4 mr-3 text-orange-600" />
                     <div>
-                      <div className="font-medium text-green-900">
+                      <div className="font-medium text-orange-900">
                         {codeVisualizerActive ? 'Hide' : 'Show'} Live Preview
                       </div>
-                      <div className="text-xs text-green-600">See code in action</div>
+                      <div className="text-xs text-orange-600">See code in action</div>
                     </div>
                   </div>
                 </button>
@@ -619,11 +706,10 @@ const LessonPage: React.FC = () => {
                 Learning Tip
               </h3>
               <p className="text-sm text-yellow-800 mb-3">
-                Don't worry about memorizing everything! Focus on understanding the concepts. 
-                The syntax will become natural with practice.
+                Practice makes perfect! Don't worry about getting everything right the first time - coding is all about learning from mistakes.
               </p>
               <div className="text-xs text-yellow-700">
-                💡 Try explaining what you learned to someone else - it's a great way to reinforce knowledge!
+                💡 Try the live coding exercises - they're the best way to learn HTML hands-on!
               </div>
             </div>
           </div>
@@ -663,10 +749,13 @@ const LessonPage: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCompleteLesson}
-                  className="flex items-center space-x-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  disabled={isCompleting}
+                  className="flex items-center space-x-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
                   <CheckCircle className="h-5 w-5" />
-                  <span>{isCompleted ? 'Completed! 🎉' : 'Complete Lesson'}</span>
+                  <span>
+                    {isCompleting ? 'Saving...' : isCompleted ? 'Completed! 🎉' : 'Complete Lesson'}
+                  </span>
                 </motion.button>
               )}
             </div>
@@ -739,7 +828,7 @@ const LessonPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Custom Styles - FIXED */}
+      {/* Custom Styles */}
       <style>
         {`
         .clickable-term {

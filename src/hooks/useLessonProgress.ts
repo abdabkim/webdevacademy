@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 export const useLessonProgress = () => {
   const { currentUser, refreshUserData } = useAuth();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   const markLessonComplete = async (
     courseId: string, 
@@ -22,10 +23,11 @@ export const useLessonProgress = () => {
     try {
       await completeLesson(currentUser.uid, courseId, lessonId, timeSpent);
       await refreshUserData(); // Refresh user data to update UI
-      toast.success('Lesson completed! 🎉');
+      return true;
     } catch (error: any) {
       console.error('Error completing lesson:', error);
       toast.error(error.message || 'Failed to complete lesson');
+      return false;
     } finally {
       setIsCompleting(false);
     }
@@ -37,19 +39,24 @@ export const useLessonProgress = () => {
       return;
     }
 
+    setIsStarting(true);
     try {
       await startCourse(currentUser.uid, courseId, courseName, totalLessons);
       await refreshUserData();
-      toast.success(`Started ${courseName} course! 🚀`);
+      return true;
     } catch (error: any) {
       console.error('Error starting course:', error);
       toast.error(error.message || 'Failed to start course');
+      return false;
+    } finally {
+      setIsStarting(false);
     }
   };
 
   return {
     markLessonComplete,
     startNewCourse,
-    isCompleting
+    isCompleting,
+    isStarting
   };
 };
